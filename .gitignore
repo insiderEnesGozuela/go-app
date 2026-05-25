@@ -1,0 +1,25 @@
+# Binaries
+/bin/
+/tmp/
+*.exe
+*.test
+*.out
+
+# Env / secrets
+.env
+.env.local
+.env.example
+*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+
+# Coverage
+coverage.out
+coverage.html
+CLAUDE.MD
