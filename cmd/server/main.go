@@ -8,10 +8,12 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/insiderEnesGozuela/go-app/internal/config"
 	"github.com/insiderEnesGozuela/go-app/internal/handler"
 	"github.com/insiderEnesGozuela/go-app/internal/logger"
+	"github.com/insiderEnesGozuela/go-app/internal/storage/postgres"
 )
 
 func main() {
@@ -41,8 +43,34 @@ func run() error {
 		Str("port", cfg.HTTP.Port).
 		Msg("starting server")
 
+	// Run migrations before opening the long-lived pool. If the schema can't be
+	// brought up to date, the binary the code expects can't run safely — fail
+	// fast at startup rather than serving against a stale schema.
+	if err := postgres.Migrate(cfg.Database.DSN()); err != nil {
+		return fmt.Errorf("run migrations: %w", err)
+	}
+	log.Info().Msg("migrations up to date")
+
+	// Open the connection pool with a bounded context so a wrong DSN fails fast
+	// instead of hanging the whole boot on a TCP timeout.
+	poolCtx, poolCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	pool, err := postgres.NewPool(poolCtx, cfg.Database)
+	poolCancel()
+	if err != nil {
+		return fmt.Errorf("connect database: %w", err)
+	}
+	// Close drains in-flight queries and releases every connection. Deferred so
+	// it runs on every return path — this is exactly why run() returns an error
+	// instead of calling log.Fatal (which would skip defers and leak the pool).
+	defer pool.Close()
+	log.Info().
+		Int32("max_conns", cfg.Database.MaxOpenConns).
+		Msg("database pool ready")
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", handler.Health)
+	// /readyz pings the DB so k8s only routes traffic once the pool is usable.
+	mux.HandleFunc("/readyz", handler.Readiness(pool))
 
 	server := &http.Server{
 		Addr:         ":" + cfg.HTTP.Port,

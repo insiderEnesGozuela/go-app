@@ -1,0 +1,35 @@
+# Hafta 2 — local geliştirme için PostgreSQL.
+# Tek komutla ayağa kaldır:  docker compose up -d
+# Month 4'te buraya Redis + uygulama servisi + Prometheus eklenecek; şimdilik
+# sadece DB'yi sağlıyoruz çünkü Hafta 2 kapsamı "veritabanını bağlamak".
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: wallet-postgres
+    environment:
+      # Bu değerler .env.example ile aynı default'lara denk gelir. Üretimde
+      # asla burada düz şifre tutulmaz; local geliştirme için kasıtlı sade.
+      POSTGRES_USER: wallet
+      POSTGRES_PASSWORD: change-me
+      POSTGRES_DB: wallet
+    ports:
+      # host:container — host 5432'yi container 5432'ye bağlar. Makinende başka
+      # bir Postgres 5432'de çalışıyorsa sol tarafı 5433 yapıp DB_PORT=5433 ver.
+      - "5432:5432"
+    volumes:
+      # named volume → container silinse bile veri kalır. `docker compose down -v`
+      # ile kasıtlı temizleyebilirsin.
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # pg_isready exit 0 dönene kadar servis "healthy" sayılmaz. Uygulama
+      # container'ı (Month 4) `depends_on: condition: service_healthy` ile
+      # buna bağlanacak, böylece DB hazır olmadan migrate/connect denenmez.
+      test: ["CMD-SHELL", "pg_isready -U wallet -d wallet"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    restart: unless-stopped
+
+volumes:
+  pgdata:

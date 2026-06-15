@@ -21,12 +21,16 @@ var (
 	ErrInvalidEmail      = errors.New("invalid email")
 
 	// Wallet
-	ErrWalletNotFound       = errors.New("wallet not found")
-	ErrWalletAlreadyExists  = errors.New("wallet already exists for user/currency")
-	ErrInsufficientBalance  = errors.New("insufficient balance")
-	ErrCurrencyMismatch     = errors.New("currency mismatch between wallets")
-	ErrUnsupportedCurrency  = errors.New("unsupported currency")
-	ErrNonPositiveAmount    = errors.New("amount must be positive")
+	ErrWalletNotFound      = errors.New("wallet not found")
+	ErrWalletAlreadyExists = errors.New("wallet already exists for user/currency")
+	ErrInsufficientBalance = errors.New("insufficient balance")
+	ErrCurrencyMismatch    = errors.New("currency mismatch between wallets")
+	ErrUnsupportedCurrency = errors.New("unsupported currency")
+	ErrNonPositiveAmount   = errors.New("amount must be positive")
+	// ErrConcurrentUpdate is returned when an optimistic-lock UPDATE affects 0
+	// rows because another transaction changed the wallet's version first. The
+	// caller may retry the whole read-modify-write.
+	ErrConcurrentUpdate = errors.New("concurrent update conflict")
 
 	// Transaction
 	ErrTransactionNotFound = errors.New("transaction not found")
